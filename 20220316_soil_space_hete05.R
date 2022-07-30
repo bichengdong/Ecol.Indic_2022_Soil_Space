@@ -1,0 +1,816 @@
+#--------------------------------------------------------------------------#
+#     .______.
+#   __| _/\_ |__    ____
+#  / __ |  | __ \ _/ ___\
+# / /_/ |  | \_\ \\  \___
+# \____ |  |___  / \___  >
+#      \/      \/      \/
+#
+# -*- coding: utf-8 -*-
+# @Author: Bicheng Dong
+# @Date: 2022-03-16 10:13:57
+# @Last Modified by:
+# @Last Modified time: 2022-05-08 20:07:20
+# @Description: 协方差分析
+#--------------------------------------------------------------------------#
+# 清理内存
+# cleaning memory
+cat("\014")
+rm(list=ls())
+gc()
+
+# 导入packages
+# You have loaded plyr after dplyr - this is likely to cause problems.
+# If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+# library(plyr); library(dplyr)
+
+library(broom)
+library(ciTools)
+library(data.table)
+library(ggplot2)
+library(purrr)
+library(readr)
+library(readxl)
+library(skimr)
+library(tidyr)
+library(ggpubr)
+library(patchwork)
+library(dplyr)
+library(nlme)
+library(car)
+
+# 设置工作区间
+setwd("G:/我的坚果云/高硕硕")
+getwd()
+
+#
+# 加载数据
+# --------------------------------------------------------------------------
+# 加载所需要的checklist数据集
+data4gao <- read.csv("./data4gao.csv")
+skim(data4gao)
+View(data4gao)
+
+# 将数据变为因子
+data4gao$Function_group <- as.factor(data4gao$Function_group)
+data4gao$Species_code <- as.factor(data4gao$Species_code)
+data4gao$Space_code <- as.factor(data4gao$Space_code)
+str(data4gao)
+
+# ==========================================================================
+# 数据的初步分析
+# ==========================================================================
+# https://fukamilab.github.io/BIO202/04-B-binary-data.html#glm_for_proportional_data
+
+# 正太分布检验
+# https://zhuanlan.zhihu.com/p/149579321
+# --------------------------------------------------------------------------
+range(data4gao$Total_mass, na.rm = T)
+range(data4gao$Shoot_mass, na.rm = T)
+range(data4gao$Root_mass, na.rm = T)
+range(data4gao$Rmass_per_vol, na.rm = T)
+range(data4gao$RM_ratio, na.rm = T)
+
+# 判断数据正态性
+ggdensity.Total_mass <- ggdensity(log(data4gao$Total_mass), main ="density plot", xlab ="Total_mass")
+ggdensity.Shoot_mass <- ggdensity(log(data4gao$hoot_mass), main ="density plot", xlab ="Shoot_mass")
+ggdensity.Root_mass <- ggdensity(log(data4gao$Root_mass), main ="density plot", xlab ="Root_mass")
+ggdensity.Rmass_per_vol <- ggdensity(log(data4gao$Rmass_per_vol), main ="density plot", xlab ="Rmass_per_vol")
+ggdensity.RM_ratio <- ggdensity(sqrt(data4gao$RM_ratio), main ="density plot", xlab ="RM_ratio")
+
+ggdensity.Total_mass + ggdensity.Shoot_mass + ggdensity.Root_mass + ggdensity.Rmass_per_vol + ggdensity.RM_ratio
+
+# qq图
+ggqqplot.Total_mass <- ggqqplot(log(data4gao$Total_mass), main ="density plot", xlab ="Total_mass")
+ggqqplot.Shoot_mass <- ggqqplot(log(data4gao$Shoot_mass), main ="density plot", xlab ="Shoot_mass")
+ggqqplot.Root_mass <- ggqqplot(log(data4gao$Root_mass), main ="density plot", xlab ="Root_mass")
+ggqqplot.Rmass_per_vol <- ggqqplot(log(data4gao$Rmass_per_vol), main ="density plot", xlab ="Rmass_per_vol")
+ggqqplot.RM_ratio <- ggqqplot(sqrt(data4gao$RM_ratio), main ="density plot", xlab ="RM_ratio")
+
+ggqqplot.Total_mass + ggqqplot.Shoot_mass + ggqqplot.Root_mass + ggqqplot.Rmass_per_vol + ggqqplot.RM_ratio
+
+
+# ==========================================================================
+# 数据summarize
+# ==========================================================================
+summary.data4gao <- data4gao %>% group_by(Function_group, Species_code) %>% dplyr::summarise(Total_mass.mean = mean(Total_mass, na.rm = TRUE),
+                                                                             Shoot_mass.mean = mean(Shoot_mass, na.rm = TRUE),
+                                                                             Root_mass.mean = mean(Root_mass, na.rm = TRUE),
+                                                                             Rmass_per_vol.mean = mean(Rmass_per_vol, na.rm = TRUE),
+                                                                             RM_ratio.mean = mean(RM_ratio, na.rm = TRUE))
+
+write.csv(summary.data4gao, "summary.data4gao.csv", row.names = FALSE)
+
+# ==========================================================================
+# 数据转换
+# ==========================================================================
+data4gao$Total_mass.tf    <- log(data4gao$Total_mass)
+data4gao$Shoot_mass.tf    <- log(data4gao$Shoot_mass)
+data4gao$Root_mass.tf     <- log(data4gao$Root_mass)
+data4gao$Rmass_per_vol.tf <- log(data4gao$Rmass_per_vol)
+data4gao$RM_ratio.tf      <- sqrt(data4gao$RM_ratio)
+
+# library(car)
+# leveneTest_Total_mass.tf           <- leveneTest(Total_mass.tf ~ Function_group*Space_code, data = data4gao)
+# leveneTest_Shoot_mass.tf <- leveneTest(Shoot_mass.tf ~ Function_group*Space_code, data = data4gao)
+# leveneTest_Root_mass.tf            <- leveneTest(Root_mass.tf ~ Function_group*Space_code, data = data4gao)
+# leveneTest_Rmass_per_vol.tf        <- leveneTest(Rmass_per_vol.tf ~ Function_group*Space_code, data = data4gao)
+# leveneTest_RM_ratio.tf             <- leveneTest(RM_ratio.tf ~ Function_group*Space_code, data = data4gao)
+
+# leveneTest_Total_mass.tf
+# leveneTest_Shoot_mass.tf
+# leveneTest_Root_mass.tf
+# leveneTest_Rmass_per_vol.tf
+# leveneTest_RM_ratio.tf
+
+# ==========================================================================
+# lme 分析 - 对功能群
+# ==========================================================================
+#nested anova
+fit_Total_mass.tf    <- lme(Total_mass.tf ~ Function_group + Space_code + Function_group:Space_code, random = ~1|Species_code, data = data4gao, na.action = na.omit, method = "REML")
+fit_Shoot_mass.tf    <- lme(Shoot_mass.tf ~ Function_group + Space_code + Function_group:Space_code, random = ~1|Species_code, data = data4gao, na.action = na.omit, method = "REML")
+fit_Root_mass.tf     <- lme(Root_mass.tf ~ Function_group + Space_code + Function_group:Space_code, random = ~1|Species_code, data = data4gao, na.action = na.omit, method = "REML")
+fit_Rmass_per_vol.tf <- lme(Rmass_per_vol.tf ~ Function_group + Space_code + Function_group:Space_code, random = ~1|Species_code, data = data4gao, na.action = na.omit, method = "REML")
+fit_RM_ratio.tf      <- lme(RM_ratio.tf ~ Function_group + Space_code + Function_group:Space_code, random = ~1|Species_code, data = data4gao, na.action = na.omit, method = "REML")
+
+fit_Total_mass.tf
+fit_Shoot_mass.tf
+fit_Root_mass.tf
+fit_Rmass_per_vol.tf
+fit_RM_ratio.tf
+
+Anova(fit_Total_mass.tf, type = "III")
+Anova(fit_Shoot_mass.tf, type = "III")
+Anova(fit_Root_mass.tf, type = "III")
+Anova(fit_Rmass_per_vol.tf, type = "III")
+Anova(fit_RM_ratio.tf, type = "III")
+
+#
+lme_aov.Total_mass    <- tidy(Anova(fit_Total_mass.tf, type = "III"))
+lme_aov.Shoot_mass    <- tidy(Anova(fit_Shoot_mass.tf, type = "III"))
+lme_aov.Root_mass     <- tidy(Anova(fit_Root_mass.tf, type = "III"))
+lme_aov.Rmass_per_vol <- tidy(Anova(fit_Rmass_per_vol.tf, type = "III"))
+lme_aov.RM_ratio      <- tidy(Anova(fit_RM_ratio.tf, type = "III"))
+library(rlist)
+
+list.lme_aovs <- list(
+                     lme_aov.Total_mass = lme_aov.Total_mass,
+                     lme_aov.Shoot_mass = lme_aov.Shoot_mass,
+                     lme_aov.Root_mass = lme_aov.Root_mass,
+                     lme_aov.Rmass_per_vol = lme_aov.Rmass_per_vol,
+                     lme_aov.RM_ratio = lme_aov.RM_ratio
+                     ) %>% list.rbind()
+
+write.csv(list.lme_aovs, "list.lme_aovs.csv", row.names = TRUE)
+
+# ==========================================================================
+# 事后交互检验
+# ==========================================================================
+# # 事后交互检验
+library(emmeans)
+emmeans(fit_Total_mass.tf, pairwise ~ Space_code)
+emmeans(fit_Shoot_mass.tf, pairwise ~ Space_code)
+emmeans(fit_Root_mass.tf, pairwise ~ Space_code)
+emmeans(fit_Rmass_per_vol.tf, pairwise ~ Space_code)
+emmeans(fit_RM_ratio.tf, pairwise ~ Space_code)
+
+# # ==========================================================================
+# # 事后交互检验 - Tukey
+# # ==========================================================================
+# #post hoc testing
+# library(multcomp)
+# library(pracma)
+
+# # Tukey矩阵
+# Tukey <- contrMat(table(data4gao$Space_code), "Tukey")
+# Tukey
+
+# # Tukey空矩阵
+# mat.temp  <- matrix(0, nrow = nrow(Tukey), ncol = ncol(Tukey))
+# mat.temp
+
+# # Species_code处理水平
+# n.level <- length(levels(data4gao$Function_group))
+
+# # 空集
+# K  <- vector()
+
+# # 循环生成矩阵
+# for (i in 1: n.level){
+
+# # 对数据重复生成Tukey矩阵和Tukey空矩阵
+# if(i == 1){K.temp <- cbind(Tukey, repmat(mat.temp, 1, n.level - 1))}
+# if(i > 1 & i < n.level){K.temp <- cbind(repmat(mat.temp, 1, i - 1), Tukey, repmat(mat.temp, 1, n.level - i))}
+# if(i == n.level){K.temp <- cbind(repmat(mat.temp, 1, n.level - 1), Tukey)}
+
+# # 行名
+# rownames(K.temp) <- paste(levels(data4gao$Function_group)[i], rownames(K.temp), sep = ":")
+# K <- rbind(K, K.temp)
+
+# }
+
+# # 列名
+# colnames(K) <- c(rep(colnames(Tukey), n.level))
+# K
+
+# tmp <- expand.grid(Space_code = unique(data4gao$Space_code), Function_group = unique(data4gao$Function_group))
+# tmp
+
+# X <- model.matrix(~ Function_group * Space_code, data = tmp)
+# X
+
+# #
+# summary(glht(fit_Total_mass.tf, linfct = K %*% X))
+# summary(glht(fit_Shoot_mass.tf, linfct = K %*% X))
+# summary(glht(fit_Root_mass.tf, linfct = K %*% X))
+# summary(glht(fit_Rmass_per_vol.tf, linfct = K %*% X))
+# summary(glht(fit_RM_ratio.tf, linfct = K %*% X))
+# summary(glht(fit_No_leaf.tf, linfct = K %*% X))
+
+# ==========================================================================
+# lm分析 - 对物种
+# ==========================================================================
+#
+type3 <- list(Species_code = contr.sum, Space_code = contr.sum)
+
+#nested anova
+fit.lm_Total_mass.tf    <- lm(Total_mass.tf ~ Species_code + Space_code + Species_code:Space_code, data = data4gao, na.action = na.omit)
+fit.lm_Shoot_mass.tf    <- lm(Shoot_mass.tf ~ Species_code + Space_code + Species_code:Space_code, data = data4gao, na.action = na.omit, contrasts = type3)
+fit.lm_Root_mass.tf     <- lm(Root_mass.tf ~ Species_code + Space_code + Species_code:Space_code, data = data4gao, na.action = na.omit, contrasts = type3)
+fit.lm_Rmass_per_vol.tf <- lm(Rmass_per_vol.tf ~ Species_code + Space_code + Species_code:Space_code, data = data4gao, na.action = na.omit, contrasts = type3)
+fit.lm_RM_ratio.tf      <- lm(RM_ratio.tf ~ Species_code + Space_code + Species_code:Space_code, data = data4gao, na.action = na.omit, contrasts = type3)
+
+fit.lm_Total_mass.tf
+fit.lm_Shoot_mass.tf
+fit.lm_Root_mass.tf
+fit.lm_Rmass_per_vol.tf
+fit.lm_RM_ratio.tf
+
+Anova(fit.lm_Total_mass.tf, type = "III")
+Anova(fit.lm_Shoot_mass.tf, type = "III")
+Anova(fit.lm_Root_mass.tf, type = "III")
+Anova(fit.lm_Rmass_per_vol.tf, type = "III")
+Anova(fit.lm_RM_ratio.tf, type = "III")
+
+
+lm_aov.Total_mass       <- tidy(Anova(fit.lm_Total_mass.tf, type = "III"))
+lm_aov.Shoot_mass <- tidy(Anova(fit.lm_Shoot_mass.tf, type = "III"))
+lm_aov.Root_mass        <- tidy(Anova(fit.lm_Root_mass.tf, type = "III"))
+lm_aov.Rmass_per_vol    <- tidy(Anova(fit.lm_Rmass_per_vol.tf, type = "III"))
+lm_aov.RM_ratio         <- tidy(Anova(fit.lm_RM_ratio.tf, type = "III"))
+
+library(rlist)
+
+list.lm_aovs <- list(
+                     lm_aov.Total_mass = lm_aov.Total_mass,
+                     lm_aov.Shoot_mass = lm_aov.Shoot_mass,
+                     lm_aov.Root_mass = lm_aov.Root_mass,
+                     lm_aov.Rmass_per_vol = lm_aov.Rmass_per_vol,
+                     lm_aov.RM_ratio = lm_aov.RM_ratio
+                     ) %>% list.rbind()
+
+write.csv(list.lm_aovs, "list.lm_aovs.csv", row.names = TRUE)
+
+# ==========================================================================
+# 事后交互检验
+# ==========================================================================
+library(emmeans)
+
+# Species_code
+emmeans(fit.lm_Total_mass.tf, pairwise ~ Species_code)
+emmeans(fit.lm_Shoot_mass.tf, pairwise ~ Species_code)
+emmeans(fit.lm_Root_mass.tf, pairwise ~ Species_code)
+emmeans(fit.lm_Rmass_per_vol.tf, pairwise ~ Species_code)
+emmeans(fit.lm_RM_ratio.tf, pairwise ~ Species_code)
+
+# Space_code
+emmeans(fit.lm_Total_mass.tf, pairwise ~ Space_code)
+emmeans(fit.lm_Shoot_mass.tf, pairwise ~ Space_code)
+emmeans(fit.lm_Root_mass.tf, pairwise ~ Space_code)
+emmeans(fit.lm_Rmass_per_vol.tf, pairwise ~ Space_code)
+emmeans(fit.lm_RM_ratio.tf, pairwise ~ Space_code)
+
+# interaction
+tukey_Total_mass.tf    <- emmeans(fit.lm_Total_mass.tf, pairwise ~ Space_code|Species_code)
+tukey_Shoot_mass.tf    <- emmeans(fit.lm_Shoot_mass.tf, pairwise ~ Space_code|Species_code)
+tukey_Root_mass.tf     <- emmeans(fit.lm_Root_mass.tf, pairwise ~ Space_code|Species_code)
+tukey_Rmass_per_vol.tf <- emmeans(fit.lm_Rmass_per_vol.tf, pairwise ~ Space_code|Species_code)
+tukey_RM_ratio.tf      <- emmeans(fit.lm_RM_ratio.tf, pairwise ~ Space_code|Species_code)
+
+tukey_Total_mass.tf$contrasts
+tukey_Shoot_mass.tf$contrasts
+tukey_Root_mass.tf$contrasts
+tukey_Rmass_per_vol.tf$contrasts
+tukey_RM_ratio.tf$contrasts
+
+#--------------------------------------------------------------------------#
+#     .______.
+#   __| _/\_ |__    ____
+#  / __ |  | __ \ _/ ___\
+# / /_/ |  | \_\ \\  \___
+# \____ |  |___  / \___  >
+#      \/      \/      \/
+#
+# -*- coding: utf-8 -*-
+# @Author: Bicheng Dong
+# @Date: 2022-03-16 10:13:57
+# @Last Modified by:
+# @Last Modified time: 2022-03-17 07:37:41
+# @Description: 作图代码
+#--------------------------------------------------------------------------#
+# ==========================================================================
+# 功能性状图
+# ==========================================================================
+library(Rmisc)
+
+# 总生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+dt_fun.Total_mass.tf <- summarySE(data4gao, measurevar = "Total_mass.tf", groupvars = c("Function_group", "Space_code"), na.rm = TRUE)
+head(dt_fun.Total_mass.tf)
+
+fg_plot.Total_mass.tf <- ggplot(dt_fun.Total_mass.tf, aes(x = Function_group, y = Total_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Total_mass.tf - se, ymax = Total_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(name = "Soil Space:",
+                                            breaks = c("H15D15","H15D30","H60D15"),
+                                            labels = c("D15H15","D30H15","D15H60"),
+                                            values = c("white", "grey", "black")) +
+                         scale_x_discrete(breaks = c("grass", "forb", "legume"), labels = c("Grasses", "Forbs", "Legumes")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position=c(0.5, 0.85),
+                              legend.text = element_text(family = "serif", colour = "black", size = 12),
+                              legend.title = element_text(family = "serif", colour = "black", size = 12),
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 12),
+                              axis.title = element_text(family = "serif", colour = "black", size = 12),
+                              # axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "Functional groups", y = "Log(total mass, g)") +
+                          scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, by = 1))
+
+fg_plot.Total_mass.tf
+
+# 地上生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_fun.Shoot_mass.tf <- summarySE(data4gao, measurevar = "Shoot_mass.tf", groupvars = c("Function_group", "Space_code"), na.rm = TRUE)
+head(dt_fun.Shoot_mass.tf)
+
+fg_plot.Shoot_mass.tf <- ggplot(dt_fun.Shoot_mass.tf, aes(x = Function_group, y = Shoot_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Shoot_mass.tf - se, ymax = Shoot_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         scale_x_discrete(breaks = c("grass", "forb", "legume"), labels = c("Grasses", "Forbs", "Legumes")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 12),
+                              axis.title = element_text(family = "serif", colour = "black", size = 12),
+                              # axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "Functional groups", y = "Log(shoot mass, g)") +
+                          scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, by = 1))
+
+fg_plot.Shoot_mass.tf
+
+
+# 根生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_fun.Root_mass.tf <- summarySE(data4gao, measurevar = "Root_mass.tf", groupvars = c("Function_group", "Space_code"), na.rm = TRUE)
+head(dt_fun.Root_mass.tf)
+
+fg_plot.Root_mass.tf <- ggplot(dt_fun.Root_mass.tf, aes(x = Function_group, y = Root_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Root_mass.tf - se, ymax = Root_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         scale_x_discrete(breaks = c("grass", "forb", "legume"), labels = c("Grasses", "Forbs", "Legumes")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 12),
+                              axis.title = element_text(family = "serif", colour = "black", size = 12),
+                              # axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "Functional groups", y = "Log(root mass, g)") +
+                          scale_y_continuous(limits = c(-2, 3), breaks = seq(-2, 3, by = 1))
+
+fg_plot.Root_mass.tf
+
+
+# 根密度
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_fun.Rmass_per_vol.tf <- summarySE(data4gao, measurevar = "Rmass_per_vol.tf", groupvars = c("Function_group", "Space_code"), na.rm = TRUE)
+head(dt_fun.Rmass_per_vol.tf)
+
+fg_plot.Rmass_per_vol.tf <- ggplot(dt_fun.Rmass_per_vol.tf, aes(x = Function_group, y = Rmass_per_vol.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Rmass_per_vol.tf - se, ymax = Rmass_per_vol.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         scale_x_discrete(breaks = c("grass", "forb", "legume"), labels = c("Grasses", "Forbs", "Legumes")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 12),
+                              axis.title = element_text(family = "serif", colour = "black", size = 12),
+                              # axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "Functional groups", y = "Log(root density, g/L)") +
+                          scale_y_continuous(limits = c(-4, 1), breaks = seq(-4, 1, by = 1))
+
+fg_plot.Rmass_per_vol.tf
+
+
+# 根冠比
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_fun.RM_ratio.tf <- summarySE(data4gao, measurevar = "RM_ratio.tf", groupvars = c("Function_group", "Space_code"), na.rm = TRUE)
+head(dt_fun.RM_ratio.tf)
+
+fg_plot.RM_ratio.tf <- ggplot(dt_fun.RM_ratio.tf, aes(x = Function_group, y = RM_ratio.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = RM_ratio.tf - se, ymax = RM_ratio.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         scale_x_discrete(breaks = c("grass", "forb", "legume"), labels = c("Grasses", "Forbs", "Legumes")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 12),
+                              axis.title = element_text(family = "serif", colour = "black", size = 12),
+                              # axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "Functional groups", y = "Sqrt(root mass fraction)") +
+                          scale_y_continuous(limits = c(0.3, 0.7), breaks = seq(0.3, 0.7, by = 0.1))
+
+fg_plot.RM_ratio.tf
+
+
+# --------------------------------------------------------------------------
+# ggplot合并
+# --------------------------------------------------------------------------
+# patchwork添加标签 https://blog.csdn.net/weixin_42350411/article/details/113316500
+library(patchwork)
+
+# 设置图1
+fg_plots_p1 <-
+fg_plot.Total_mass.tf +
+fg_plot.Shoot_mass.tf +
+fg_plot.Root_mass.tf +
+fg_plot.Rmass_per_vol.tf +
+fg_plot.RM_ratio.tf +
+plot_layout(ncol = 2, byrow = FALSE) +
+plot_annotation(tag_levels = 'A')
+
+(fg_plots_p1)
+
+
+# --------------------------------------------------------------------------
+# 出图
+# --------------------------------------------------------------------------
+library(ggpubr)
+ggexport(fg_plots_p1, filename = "./20220508fg_plots.png",
+         width = 1800,
+         height = 2700,
+         pointsize = 12,
+         res = 300)
+
+
+# ==========================================================================
+# 物种图
+# ==========================================================================
+library(Rmisc)
+library(dplyr)
+library(grid)
+
+# 设定levels水平的顺序
+#  str(data4gao)
+data4gao.summary <- data4gao %>% group_by(Function_group, Species_code) %>% dplyr::summarise(n = sum(!is.na(Total_mass)))
+data4gao.summary
+
+levels.order <- data4gao.summary$Species_code
+
+# 总生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+dt_sp.Total_mass.tf <- summarySE(data4gao, measurevar = "Total_mass.tf", groupvars = c("Species_code", "Space_code"), na.rm = TRUE)
+head(dt_sp.Total_mass.tf)
+
+# 调整x轴的循序
+dt_sp.Total_mass.tf$Species_code <- factor(dt_sp.Total_mass.tf$Species_code, order = TRUE, levels = levels.order)
+levels(dt_sp.Total_mass.tf$Species_code)
+
+# https://stackoverflow.com/questions/61549243/secondary-x-axis-labels-for-sample-size-with-ggplot2-on-r
+# x轴坐标下需要添加字符
+sp_plot.Total_mass.tf <- ggplot(dt_sp.Total_mass.tf, aes(x = Species_code, y = Total_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Total_mass.tf - se, ymax = Total_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(name = "Soil Space",
+                                            breaks = c("H15D15","H15D30","H60D15"),
+                                            labels = c("D15H15","D30H15","D15H60"),
+                                            values = c("white", "grey", "black")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position=c(0.2, 0.85),
+                              legend.text = element_text(family = "serif", colour = "black", size = 14),
+                              legend.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 14),
+                              axis.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "", y = "Log(total mass, g)") +
+                          scale_y_continuous(limits = c(-2, 8), breaks = seq(-2, 8, by = 2))
+
+# 地上生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_sp.Shoot_mass.tf <- summarySE(data4gao, measurevar = "Shoot_mass.tf", groupvars = c("Species_code", "Space_code"), na.rm = TRUE)
+head(dt_sp.Shoot_mass.tf)
+
+# 调整x轴的循序
+dt_sp.Shoot_mass.tf$Species_code <- factor(dt_sp.Shoot_mass.tf$Species_code, order = TRUE, levels = levels.order)
+levels(dt_sp.Shoot_mass.tf$Species_code)
+
+# 作图
+sp_plot.Shoot_mass.tf <- ggplot(dt_sp.Shoot_mass.tf, aes(x = Species_code, y = Shoot_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Shoot_mass.tf - se, ymax = Shoot_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 14),
+                              axis.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "", y = "Log(shoot mass, g)") +
+                          scale_y_continuous(limits = c(-2, 8), breaks = seq(-2, 8, by = 2))
+
+sp_plot.Shoot_mass.tf
+
+
+# 根生物量
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_sp.Root_mass.tf <- summarySE(data4gao, measurevar = "Root_mass.tf", groupvars = c("Species_code", "Space_code"), na.rm = TRUE)
+head(dt_sp.Root_mass.tf)
+
+# 调整x轴的循序
+dt_sp.Root_mass.tf$Species_code <- factor(dt_sp.Root_mass.tf$Species_code, order = TRUE, levels = levels.order)
+levels(dt_sp.Root_mass.tf$Species_code)
+
+sp_plot.Root_mass.tf <- ggplot(dt_sp.Root_mass.tf, aes(x = Species_code, y = Root_mass.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Root_mass.tf - se, ymax = Root_mass.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 14),
+                              axis.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "", y = "Log(root mass, g)") +
+                          scale_y_continuous(limits = c(-4, 4), breaks = seq(-4, 4, by = 2))
+
+
+# 根密度
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_sp.Rmass_per_vol.tf <- summarySE(data4gao, measurevar = "Rmass_per_vol.tf", groupvars = c("Species_code", "Space_code"), na.rm = TRUE)
+head(dt_sp.Rmass_per_vol.tf)
+
+# 调整x轴的循序
+dt_sp.Rmass_per_vol.tf$Species_code <- factor(dt_sp.Rmass_per_vol.tf$Species_code, order = TRUE, levels = levels.order)
+levels(dt_sp.Rmass_per_vol.tf$Species_code)
+
+
+sp_plot.Rmass_per_vol.tf <- ggplot(dt_sp.Rmass_per_vol.tf, aes(x = Species_code, y = Rmass_per_vol.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = Rmass_per_vol.tf - se, ymax = Rmass_per_vol.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(name = "Soil Space",
+                                            breaks = c("H15D15","H15D30","H60D15"),
+                                            labels = c("D15H15","D30H15","D15H60"),
+                                            values = c("white", "grey", "black")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position=c(0.2, 0.85),
+                              legend.text = element_text(family = "serif", colour = "black", size = 14),
+                              legend.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 14),
+                              axis.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "", y = "Log(root density, g/L)") +
+                          scale_y_continuous(limits = c(-6, 6), breaks = seq(-6, 6, by = 2))
+
+sp_plot.Rmass_per_vol.tf
+
+
+# 根冠比
+# --------------------------------------------------------------------------
+# summarySE(data = NULL, measurevar, groupvars = NULL, na.rm = FALSE, conf.interval = 0.95, .drop = TRUE)
+
+dt_sp.RM_ratio.tf <- summarySE(data4gao, measurevar = "RM_ratio.tf", groupvars = c("Species_code", "Space_code"), na.rm = TRUE)
+head(dt_sp.RM_ratio.tf)
+
+# 调整x轴的循序
+dt_sp.RM_ratio.tf$Species_code <- factor(dt_sp.RM_ratio.tf$Species_code, order = TRUE, levels = levels.order)
+levels(dt_sp.RM_ratio.tf$Species_code)
+
+sp_plot.RM_ratio.tf <- ggplot(dt_sp.RM_ratio.tf, aes(x = Species_code, y = RM_ratio.tf, fill = as.factor(Space_code))) +
+    geom_errorbar(position = position_dodge(.8), width = .2, size = 0.5, aes(ymin = RM_ratio.tf - se, ymax = RM_ratio.tf + se)) +
+    geom_point(position = position_dodge(.8), shape = 21, size = 4) +
+                         scale_fill_manual(values = c("white", "grey", "black")) +
+                         theme(panel.background = element_rect(fill = NA),
+                              legend.position = "none",
+                              axis.line = element_line(size = 1, linetype = "solid"),
+                              axis.ticks = element_line(colour = "black", linetype = "solid", size = 1),
+                              axis.text = element_text(family = "serif", colour = "black", size = 14),
+                              axis.title = element_text(family = "serif", colour = "black", size = 14),
+                              axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5)
+                              ) +
+                          labs(x = "", y = "Sqrt(root mass fraction)") +
+                          scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2))
+
+sp_plot.RM_ratio.tf
+
+# ==========================================================================
+# 步骤3：
+# ggplot合并
+# ==========================================================================
+# 加辅助线
+# --------------------------------------------------------------------------
+sp_plot.Root_mass.tf01 <- sp_plot.Root_mass.tf + coord_cartesian(clip = "off") +
+annotation_custom(linesGrob(x = unit(c(0.03, 0.29), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(linesGrob(x = unit(c(0.34, 0.66), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(linesGrob(x = unit(c(0.71, 0.97), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(textGrob(label = "Forbs", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 3.5, xmax = 3.5, ymin = -8, ymax = -8) +
+annotation_custom(textGrob(label = "Grasses", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 10, xmax = 10, ymin = -8, ymax = -8) +
+annotation_custom(textGrob(label = "Legumes", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 16.5, xmax = 16.5, ymin = -8, ymax = -8)
+
+sp_plot.Root_mass.tf01
+
+
+sp_plot.RM_ratio.tf01 <- sp_plot.RM_ratio.tf + coord_cartesian(clip = "off") +
+annotation_custom(linesGrob(x = unit(c(0.03, 0.29), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(linesGrob(x = unit(c(0.34, 0.66), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(linesGrob(x = unit(c(0.71, 0.97), 'npc'), y = unit(c(- 0.345, - 0.345), 'npc'), gp = gpar(lwd = 2))) +
+annotation_custom(textGrob(label = "Forbs", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 3.5, xmax = 3.5, ymin = -0.5, ymax = -0.5) +
+annotation_custom(textGrob(label = "Grasses", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 10, xmax = 10, ymin = -0.5, ymax = -0.5) +
+annotation_custom(textGrob(label = "Legumes", gp = gpar(fontfamily = "serif", fontsize = 14)), xmin = 16.5, xmax = 16.5, ymin = -0.5, ymax = -0.5)
+
+sp_plot.RM_ratio.tf01
+
+
+# 加P值
+# --------------------------------------------------------------------------
+# 使用levels.order, 判断x轴的位置
+df.levels.order <- data.frame(Species_code = as.character(levels.order), levels.order = seq(levels.order))
+df.levels.order
+
+# 合并显著性指标
+# 使用emmeans包确定contrast，是否显著
+df.tukey_Total_mass.tf    <- as.data.frame(tukey_Total_mass.tf$contrasts)
+df.tukey_Shoot_mass.tf    <- as.data.frame(tukey_Shoot_mass.tf$contrasts)
+df.tukey_Root_mass.tf     <- as.data.frame(tukey_Root_mass.tf$contrasts)
+df.tukey_Rmass_per_vol.tf <- as.data.frame(tukey_Rmass_per_vol.tf$contrasts)
+df.tukey_RM_ratio.tf      <- as.data.frame(tukey_RM_ratio.tf$contrasts)
+
+df.tukey_Total_mass.tf
+df.tukey_Shoot_mass.tf
+df.tukey_Root_mass.tf
+df.tukey_Rmass_per_vol.tf
+df.tukey_RM_ratio.tf
+
+#
+# 对于总生物量
+# --------------------------------------------------------------------------
+# 保留那些数据小于0.05，并提取物种名
+tukey_Total_mass.species_code <- df.tukey_Total_mass.tf %>% filter(p.value <= 0.05) %>% dplyr::select(Species_code) %>% unique()
+tukey_Total_mass.species_code$Species_code <- as.character(tukey_Total_mass.species_code$Species_code)
+
+# 合并df.levels.order和tukey_Total_mass.species_code
+tukey_Total_mass.species_code01 <- tukey_Total_mass.species_code %>% dplyr::left_join(df.levels.order, by = "Species_code")
+tukey_Total_mass.species_code01
+
+# 合并df.levels.order01和dt_sp.Total_mass.tf
+dt_sp.Total_mass.tf$Species_code <- as.character(dt_sp.Total_mass.tf$Species_code)
+tukey_Total_mass.species_code02 <- tukey_Total_mass.species_code01 %>% dplyr::left_join(dt_sp.Total_mass.tf, by = "Species_code")
+tukey_Total_mass.species_code02
+
+# 新加一列，字母标记，显示显著性
+# df.tukey_Total_mass.tf %>% filter(p.value <=0.05)
+tukey_Total_mass.species_code03 <- tukey_Total_mass.species_code02 %>%
+                        dplyr::select(Species_code, Space_code, levels.order, Total_mass.tf) %>%
+                        mutate(p_lab = c("a", "a", "b",
+                                         "a", "b", "b",
+                                         "a", "b", "c",
+                                         "a", "ab", "b",
+                                         "a", "ab", "b",
+                                         "a", "ab", "b",
+                                         "a", "ab", "b",
+                                         "a", "a", "b"))
+
+tukey_Total_mass.species_code03
+
+# 标记sp_plot.Total_mass.tf里面的图
+sp_plot.Total_mass.tf01 <- sp_plot.Total_mass.tf +
+                           geom_text(data = tukey_Total_mass.species_code03, aes(x = levels.order, y = Total_mass.tf + 1.4, label = p_lab), size = 5, position = position_dodge(.8))
+sp_plot.Total_mass.tf01
+
+
+# 对于地上生物量
+# --------------------------------------------------------------------------
+# 保留那些数据小于0.05，并提取物种名
+tukey_Shoot_mass.species_code <- df.tukey_Shoot_mass.tf %>% filter(p.value <= 0.05) %>% dplyr::select(Species_code) %>% unique()
+tukey_Shoot_mass.species_code$Species_code <- as.character(tukey_Shoot_mass.species_code$Species_code)
+
+# 合并df.levels.order和tukey_Shoot_mass.species_code
+tukey_Shoot_mass.species_code01 <- tukey_Shoot_mass.species_code %>% dplyr::left_join(df.levels.order, by = "Species_code")
+tukey_Shoot_mass.species_code01
+
+# 合并df.levels.order01和dt_sp.Shoot_mass.tf
+dt_sp.Shoot_mass.tf$Species_code <- as.character(dt_sp.Shoot_mass.tf$Species_code)
+tukey_Shoot_mass.species_code02 <- tukey_Shoot_mass.species_code01 %>% dplyr::left_join(dt_sp.Shoot_mass.tf, by = "Species_code")
+tukey_Shoot_mass.species_code02
+
+# 新加一列，字母标记，显示显著性
+# df.tukey_Shoot_mass.tf %>% filter(p.value <= 0.05)
+tukey_Shoot_mass.species_code03 <- tukey_Shoot_mass.species_code02 %>%
+                        dplyr::select(Species_code, Space_code, levels.order, Shoot_mass.tf) %>%
+                        mutate(p_lab = c("a", "a", "b",
+                                         "a", "b", "b",
+                                         "a", "b", "c",
+                                         "a", "ab", "b",
+                                         "a", "b", "b",
+                                         "a", "ab", "b",
+                                         "a", "ab", "b",
+                                         "a", "b", "a",
+                                         "a", "ab", "b",
+                                         "a", "a", "b"))
+
+tukey_Shoot_mass.species_code03
+
+# 标记sp_plot.Shoot_mass.tf里面的图
+sp_plot.Shoot_mass.tf01 <- sp_plot.Shoot_mass.tf +
+                           geom_text(data = tukey_Shoot_mass.species_code03, aes(x = levels.order, y = Shoot_mass.tf + 1.4, label = p_lab), size = 5, position = position_dodge(.8))
+sp_plot.Shoot_mass.tf01
+
+
+# 作图
+# --------------------------------------------------------------------------
+# patchwork添加标签 https://blog.csdn.net/weixin_42350411/article/details/113316500
+library(patchwork)
+
+# 设置图1
+sp_plots_p1 <-
+sp_plot.Total_mass.tf01 +
+sp_plot.Shoot_mass.tf01 +
+sp_plot.Root_mass.tf01 +
+plot_layout(ncol = 1, byrow = FALSE) +
+plot_annotation(tag_levels = 'A')
+
+sp_plots_p2 <-
+sp_plot.Rmass_per_vol.tf +
+sp_plot.RM_ratio.tf01 +
+plot_layout(ncol = 1, byrow = FALSE) +
+plot_annotation(tag_levels = 'A')
+
+(sp_plots_p1)
+(sp_plots_p2)
+
+# ==========================================================================
+# 出图
+# ==========================================================================
+library(ggpubr)
+ggexport(sp_plots_p1, filename = "./20220508_sp_plots01.png",
+         width = 3500,
+         height = 3000,
+         pointsize = 12,
+         res = 300)
+
+ggexport(sp_plots_p2, filename = "./20220508_sp_plots02.png",
+         width = 3500,
+         height = 2000,
+         pointsize = 12,
+         res = 300)
+
+
