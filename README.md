@@ -2,4 +2,4 @@
 The raw data and main codes required for the analyses in Dong et al. (2022) Ecological Indicators are available here.
 
 ### Reference
-Dong R, Gao S-S, Dong B-C, Luo F-L, Gao J-Q, and Yu F-H (2022) Plasticity in responses to dimensional variations of soil space in 19 grassland plant species. Ecological Indicators. 142, 109300. [link](https://www.sciencedirect.com/science/article/pii/S1470160X22007725)
+Dong R, Gao S-S, Dong B-C, Luo F-L, Gao J-Q, and Yu F-H (2022) Plasticity in responses to dimensional variations of soil space in 19 grassland plant species. Ecological Indicators. 142, 109300. [[link]](https://www.sciencedirect.com/science/article/pii/S1470160X22007725)
